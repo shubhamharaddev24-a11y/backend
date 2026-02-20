@@ -9,33 +9,40 @@ const leadSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
+    required: false,
+    default: '',
     trim: true,
     lowercase: true,
-    match: [
-      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-      'Please enter a valid email'
-    ]
   },
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
     trim: true
   },
-  subject: {
+  service: {
     type: String,
-    required: [true, 'Subject is required'],
+    required: false,
+    default: 'General Inquiry',
     enum: [
-      'Wedding Photography',
-      'Portrait Photography', 
-      'Digital Services',
-      'Printing Services',
-      'General Inquiry'
+      'Wedding photography & video',
+      'Pre-wedding shoot',
+      'Passport photos / prints',
+      'Wedding cards (लग्नपत्रिका)',
+      'Banners / flex / posters',
+      'DTP / biodata / CV',
+      'Other studio service',
+      'General Inquiry',
+      ''
     ]
+  },
+  preferredDate: {
+    type: Date,
+    required: false,
   },
   message: {
     type: String,
-    required: [true, 'Message is required'],
+    required: false,
+    default: '',
     maxlength: [2000, 'Message cannot exceed 2000 characters']
   },
   status: {
@@ -75,8 +82,7 @@ const leadSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for better query performance
 leadSchema.index({ status: 1, createdAt: -1 });
-leadSchema.index({ email: 1 });
+leadSchema.index({ phone: 1 });
 
 module.exports = mongoose.model('Lead', leadSchema);
