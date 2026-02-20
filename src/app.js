@@ -1,3 +1,4 @@
+// app.js
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -9,7 +10,12 @@ require('dotenv').config();
 const connectDB = require('./config/db');
 const globalErrorHandler = require('./middlewares/error.middleware');
 const ApiError = require('./utils/ApiError');
-
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
 // Import routes
 const routes = require('./routes');
 
@@ -37,6 +43,9 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
