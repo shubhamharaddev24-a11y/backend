@@ -25,9 +25,11 @@ process.on('uncaughtException', (err) => {
 // Start server
 const port = PORT || 5000;
 server.listen(port, () => {
-  console.log(`🚀 Server running on port ${port} in ${process.env.NODE_ENV} mode`);
+  const env = require('./config/env');
+  console.log(`🚀 Server running on port ${port} in ${env.NODE_ENV} mode`);
   console.log(`📱 Health check: http://localhost:${port}/health`);
   console.log(`🔗 API Base URL: http://localhost:${port}/api`);
+  console.log(`🌐 CORS Allowed Origin: ${env.FRONTEND_URL}`);
 });
 
 // Graceful shutdown
