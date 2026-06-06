@@ -2,26 +2,54 @@ const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const ApiError = require('../utils/ApiError');
+const fs = require('fs');
+const path = require('path');
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Determine if we should use Cloudinary based on environment credentials
+const useCloudinary = process.env.CLOUDINARY_API_KEY && 
+                      !process.env.CLOUDINARY_API_KEY.includes('your-cloudinary') &&
+                      process.env.CLOUDINARY_CLOUD_NAME && 
+                      !process.env.CLOUDINARY_CLOUD_NAME.includes('your-cloudinary');
 
-// Configure Cloudinary storage for multer
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'shubham-photos',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov'],
-    public_id: (req, file) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      return `${file.fieldname}-${uniqueSuffix}`;
+let storage;
+
+if (useCloudinary) {
+  // Configure Cloudinary
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
+  storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: 'shubham-photos',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov'],
+      public_id: (req, file) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        return `${file.fieldname}-${uniqueSuffix}`;
+      },
     },
-  },
-});
+  });
+} else {
+  // Fallback: Local Disk Storage
+  const uploadDir = path.join(__dirname, '../../public/uploads');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+    }
+  });
+}
 
 // Initialize multer
 const upload = multer({
@@ -49,8 +77,32 @@ exports.uploadSingle = (fieldName) => upload.single(fieldName);
 // Multiple files upload
 exports.uploadMultiple = (fieldName, maxCount = 5) => upload.array(fieldName, maxCount);
 
-// Delete file from Cloudinary
+// Helper to get correct file URL (Cloudinary path vs local absolute URL)
+exports.getFileUrl = (file, req) => {
+  if (useCloudinary) {
+    return file.path; // Cloudinary secure URL is stored in path by multer-storage-cloudinary
+  }
+  // Local serving URL: http://<host>/uploads/<filename>
+  const host = req.get('host');
+  return `${req.protocol}://${host}/uploads/${file.filename}`;
+};
+
+// Delete file from Cloudinary (with local storage safety check)
 exports.deleteFile = async (publicId) => {
+  if (!useCloudinary) {
+    // Local storage fallback: locate and delete file if it matches publicId/filename
+    try {
+      const filePath = path.join(__dirname, '../../public/uploads', path.basename(publicId));
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      return { result: 'ok' };
+    } catch (err) {
+      console.error('Error deleting local file:', err);
+      return { result: 'failed' };
+    }
+  }
+
   try {
     const result = await cloudinary.uploader.destroy(publicId);
     return result;
@@ -62,6 +114,10 @@ exports.deleteFile = async (publicId) => {
 
 // Get file info
 exports.getFileInfo = async (publicId) => {
+  if (!useCloudinary) {
+    return { public_id: publicId, local: true };
+  }
+
   try {
     const result = await cloudinary.api.resource(publicId);
     return result;

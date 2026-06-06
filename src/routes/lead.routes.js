@@ -13,6 +13,7 @@ router.get('/public/testimonials', leadController.getPublicTestimonials);
 router.get('/', protect, leadController.getAllLeads);
 router.get('/:id', protect, leadController.getLeadById);
 router.patch('/:id/status', protect, leadController.updateLeadStatus);
+router.put('/:id', protect, leadController.updateLead);
 router.delete('/:id', protect, leadController.deleteLead);
 router.get('/stats/summary', protect, leadController.getLeadStats);
 
