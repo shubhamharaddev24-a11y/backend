@@ -27,7 +27,7 @@ router.get('/', (req, res) => {
       services: '/api/services',
       tasks: '/api/tasks'
     },
-    documentation: 'https://api-docs.shubhammedia.com'
+    documentation: 'https://api-docs.smediadigitalservices.com'
   });
 });
 

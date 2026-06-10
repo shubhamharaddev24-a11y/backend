@@ -139,7 +139,7 @@ exports.sendBookingConfirmation = async (booking) => {
         <p style="margin: 0;">Shubham Media & Digital Services</p>
         <p style="margin: 5px 0 0 0; font-size: 12px;">Creative Media, Web Dev & Marketing Agency</p>
         <p style="margin: 10px 0 0 0; font-size: 12px;">
-          Phone: +91 92714 56749 | Email: info@shubhammedia.com
+          Phone: +91 92714 56749 | Email: info@smediadigitalservices.com
         </p>
       </div>
     </div>
