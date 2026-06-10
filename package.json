@@ -1,7 +1,7 @@
 {
-  "name": "shubham-photos-backend",
+  "name": "shubham-media-backend",
   "version": "1.0.0",
-  "description": "Professional backend API for Shubham Photos Studio",
+  "description": "Professional backend API for Shubham Media & Digital Services",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -13,12 +13,15 @@
   "keywords": [
     "photography",
     "studio",
+    "web development",
+    "marketing",
+    "agency",
     "api",
     "backend",
     "express",
     "mongodb"
   ],
-  "author": "Shubham Photos Studio",
+  "author": "Shubham Media & Digital Services",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",

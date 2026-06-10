@@ -18,7 +18,7 @@ router.use('/tasks', taskRoutes);
 // API documentation route
 router.get('/', (req, res) => {
   res.json({
-    message: 'Shubham Photos Studio API',
+    message: 'Shubham Media & Digital Services API',
     version: '1.0.0',
     endpoints: {
       auth: '/api/auth',
@@ -27,7 +27,7 @@ router.get('/', (req, res) => {
       services: '/api/services',
       tasks: '/api/tasks'
     },
-    documentation: 'https://api-docs.shubham-photos.com'
+    documentation: 'https://api-docs.shubhammedia.com'
   });
 });
 
