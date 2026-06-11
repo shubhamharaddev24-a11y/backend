@@ -5,12 +5,14 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 const env = require('./config/env');
 
 const connectDB = require('./config/db');
 const globalErrorHandler = require('./middlewares/error.middleware');
 const ApiError = require('./utils/ApiError');
 
+// Setup upload directories
 const corsOptions = {
   origin: env.FRONTEND_URL,
   credentials: true,
@@ -73,6 +75,9 @@ app.get('/health', (req, res) => {
     uptime: process.uptime()
   });
 });
+
+// Static uploads serving
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 // API routes
 app.use('/api', routes);

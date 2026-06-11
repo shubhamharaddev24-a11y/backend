@@ -20,7 +20,7 @@ const sendEmail = async (options) => {
     const transporter = createTransporter();
     
     const mailOptions = {
-      from: `"Shubham Photos Studio" <${process.env.EMAIL_USER}>`,
+      from: `"Shubham Media & Digital Services" <${process.env.EMAIL_USER}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,
@@ -76,8 +76,8 @@ exports.sendLeadNotification = async (lead) => {
       </div>
       
       <div style="background: #333; color: white; padding: 20px; text-align: center;">
-        <p style="margin: 0;">Shubham Photos Studio</p>
-        <p style="margin: 5px 0 0 0; font-size: 12px;">Professional Photography & Digital Services</p>
+        <p style="margin: 0;">Shubham Media & Digital Services</p>
+        <p style="margin: 5px 0 0 0; font-size: 12px;">Creative Media, Web Dev & Marketing Agency</p>
       </div>
     </div>
   `;
@@ -136,10 +136,10 @@ exports.sendBookingConfirmation = async (booking) => {
       </div>
       
       <div style="background: #333; color: white; padding: 20px; text-align: center;">
-        <p style="margin: 0;">Shubham Photos Studio</p>
-        <p style="margin: 5px 0 0 0; font-size: 12px;">Professional Photography & Digital Services</p>
+        <p style="margin: 0;">Shubham Media & Digital Services</p>
+        <p style="margin: 5px 0 0 0; font-size: 12px;">Creative Media, Web Dev & Marketing Agency</p>
         <p style="margin: 10px 0 0 0; font-size: 12px;">
-          Phone: +91 92714 56749 | Email: info@shubhamphotos.com
+          Phone: +91 92714 56749 | Email: info@smediadigitalservices.com
         </p>
       </div>
     </div>
@@ -147,7 +147,7 @@ exports.sendBookingConfirmation = async (booking) => {
 
   return await sendEmail({
     to: booking.customerEmail,
-    subject: 'Booking Confirmation - Shubham Photos Studio',
+    subject: 'Booking Confirmation - Shubham Media & Digital Services',
     html,
     text: `Thank you for your booking! We will contact you soon to confirm the details.`
   });
@@ -187,8 +187,8 @@ exports.sendBookingStatusUpdate = async (booking) => {
       </div>
       
       <div style="background: #333; color: white; padding: 20px; text-align: center;">
-        <p style="margin: 0;">Shubham Photos Studio</p>
-        <p style="margin: 5px 0 0 0; font-size: 12px;">Professional Photography & Digital Services</p>
+        <p style="margin: 0;">Shubham Media & Digital Services</p>
+        <p style="margin: 5px 0 0 0; font-size: 12px;">Creative Media, Web Dev & Marketing Agency</p>
       </div>
     </div>
   `;

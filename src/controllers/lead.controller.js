@@ -150,3 +150,21 @@ exports.getPublicTestimonials = asyncHandler(async (req, res, next) => {
     ApiResponse.success(testimonials, 'Testimonials retrieved successfully')
   );
 });
+
+// Update lead (for assigning leads to users)
+exports.updateLead = asyncHandler(async (req, res, next) => {
+  const lead = await Lead.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true, runValidators: true }
+  ).populate('assignedTo', 'name email');
+
+  if (!lead) {
+    return next(new ApiError(404, 'Lead not found'));
+  }
+
+  res.status(200).json(
+    ApiResponse.success(lead, 'Lead updated successfully')
+  );
+});
+
