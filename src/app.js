@@ -77,6 +77,7 @@ app.get('/health', (req, res) => {
 });
 
 // Static uploads serving
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 // API routes
