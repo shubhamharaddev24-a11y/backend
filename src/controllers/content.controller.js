@@ -87,6 +87,8 @@ exports.updateSection = async (req, res) => {
   }
 };
 
+const sharp = require('sharp');
+
 // @desc    Upload website image asset
 // @route   POST /api/content/upload
 // @access  Private (Admin)
@@ -99,14 +101,33 @@ exports.uploadImage = async (req, res) => {
       });
     }
 
+    let finalFilename = req.file.filename;
+    const originalPath = req.file.path;
+    const outputFilename = `opt-${Date.now()}-${Math.round(Math.random() * 1e9)}.jpg`;
+    const outputPath = path.join(path.dirname(originalPath), outputFilename);
+
+    try {
+      await sharp(originalPath)
+        .resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 84, progressive: true, mozjpeg: true })
+        .toFile(outputPath);
+
+      if (fs.existsSync(outputPath)) {
+        fs.unlinkSync(originalPath); // remove huge raw file
+        finalFilename = outputFilename;
+      }
+    } catch (sharpError) {
+      console.warn('Sharp optimization fallback:', sharpError.message);
+    }
+
     // Relative static URL path served by Express
-    const imageUrl = `/uploads/${req.file.filename}`;
+    const imageUrl = `/uploads/${finalFilename}`;
 
     return res.status(201).json({
       success: true,
-      message: 'Image uploaded successfully',
+      message: 'Image uploaded & optimized successfully',
       imageUrl,
-      filename: req.file.filename,
+      filename: finalFilename,
     });
   } catch (error) {
     return res.status(500).json({
