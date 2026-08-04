@@ -6,7 +6,7 @@ const ContentSectionSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      enum: ['hero_slides', 'portfolio_items', 'services_list', 'testimonials', 'studio_info'],
+      enum: ['hero_slides', 'portfolio_items', 'services_list', 'testimonials', 'studio_info', 'home_showcase_portraits'],
     },
     title: {
       type: String,
