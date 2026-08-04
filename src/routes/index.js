@@ -7,6 +7,7 @@ const leadRoutes = require('./lead.routes');
 const bookingRoutes = require('./booking.routes');
 const serviceRoutes = require('./service.routes');
 const taskRoutes = require('./task.routes');
+const contentRoutes = require('./content.routes');
 
 // API version and base routes
 router.use('/auth', authRoutes);
@@ -14,6 +15,7 @@ router.use('/leads', leadRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/services', serviceRoutes);
 router.use('/tasks', taskRoutes);
+router.use('/content', contentRoutes);
 
 // API documentation route
 router.get('/', (req, res) => {
@@ -25,7 +27,8 @@ router.get('/', (req, res) => {
       leads: '/api/leads',
       bookings: '/api/bookings',
       services: '/api/services',
-      tasks: '/api/tasks'
+      tasks: '/api/tasks',
+      content: '/api/content'
     },
     documentation: 'https://api-docs.smediadigitalservices.com'
   });
