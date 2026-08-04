@@ -32,11 +32,17 @@ if (useCloudinary) {
       },
     },
   });
-} else {
   // Fallback: Local Disk Storage
-  const uploadDir = path.join(__dirname, '../../public/uploads');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+  const uploadDir = process.env.NODE_ENV === 'production'
+    ? path.join('/tmp', 'public/uploads')
+    : path.join(__dirname, '../../public/uploads');
+
+  try {
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+  } catch (err) {
+    console.warn('⚠️ Could not create local upload directory (this is normal on serverless platforms):', err.message);
   }
 
   storage = multer.diskStorage({

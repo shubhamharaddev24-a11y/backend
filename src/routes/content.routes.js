@@ -6,10 +6,17 @@ const fs = require('fs');
 const contentController = require('../controllers/content.controller');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
 
-// Ensure uploads directory exists
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Ensure uploads directory exists (wrapped in try/catch for read-only serverless filesystems)
+const uploadDir = process.env.NODE_ENV === 'production' 
+  ? path.join('/tmp', 'uploads') 
+  : path.join(__dirname, '../../uploads');
+
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('⚠️ Could not create uploads directory (this is normal on serverless platforms):', err.message);
 }
 
 // Multer Storage Setup
