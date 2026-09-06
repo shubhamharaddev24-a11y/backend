@@ -97,10 +97,31 @@ exports.uploadImage = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'Please attach an image file',
+        message: 'Please attach a media file',
       });
     }
 
+    // 1. Cloudinary upload (production)
+    if (req.file.path && (req.file.path.startsWith('http://') || req.file.path.startsWith('https://'))) {
+      return res.status(201).json({
+        success: true,
+        message: 'Media uploaded to Cloudinary successfully',
+        imageUrl: req.file.path,
+        filename: req.file.filename || path.basename(req.file.path),
+      });
+    }
+
+    // 2. Local Video upload
+    if (req.file.mimetype && req.file.mimetype.startsWith('video/')) {
+      return res.status(201).json({
+        success: true,
+        message: 'Video uploaded successfully',
+        imageUrl: `/uploads/${req.file.filename}`,
+        filename: req.file.filename,
+      });
+    }
+
+    // 3. Local Image upload (with Sharp optimization)
     let finalFilename = req.file.filename;
     const originalPath = req.file.path;
     const outputFilename = `opt-${Date.now()}-${Math.round(Math.random() * 1e9)}.jpg`;
@@ -132,7 +153,7 @@ exports.uploadImage = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: 'Image upload failed',
+      message: 'Media upload failed',
       error: error.message,
     });
   }
