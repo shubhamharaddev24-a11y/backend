@@ -12,13 +12,31 @@ const connectDB = require('./config/db');
 const globalErrorHandler = require('./middlewares/error.middleware');
 const ApiError = require('./utils/ApiError');
 
-// Setup upload directories
+// Dynamic allowed origins for production and local environments
+const allowedOrigins = [
+  'https://creaonnect.com',
+  'https://www.creaonnect.com',
+  env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000'
+].filter(Boolean);
+
 const corsOptions = {
-  origin: env.FRONTEND_URL,
+  origin: (origin, callback) => {
+    // Allow server-to-server, health check, curl or postman requests without origin
+    if (!origin) return callback(null, true);
+    const cleanOrigin = origin.replace(/\/$/, '');
+    const isAllowed = allowedOrigins.some(o => o && o.replace(/\/$/, '') === cleanOrigin);
+    if (isAllowed) {
+      return callback(null, true);
+    }
+    return callback(new ApiError(403, `Origin ${origin} not allowed by CORS`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
+
 
 // Import routes
 const routes = require('./routes');

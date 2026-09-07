@@ -20,7 +20,7 @@ router.use('/content', contentRoutes);
 // API documentation route
 router.get('/', (req, res) => {
   res.json({
-    message: 'Shubham Media & Digital Services API',
+    message: 'CREAONNECT API',
     version: '1.0.0',
     endpoints: {
       auth: '/api/auth',
@@ -30,8 +30,9 @@ router.get('/', (req, res) => {
       tasks: '/api/tasks',
       content: '/api/content'
     },
-    documentation: 'https://api-docs.smediadigitalservices.com'
+    documentation: 'https://creaonnect.com'
   });
 });
 
 module.exports = router;
+
