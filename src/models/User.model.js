@@ -27,8 +27,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
+    enum: ['user', 'admin', 'client', 'freelancer', 'photographer'],
+    default: 'client'
   },
   avatar: {
     type: String,
@@ -37,6 +37,22 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     trim: true
+  },
+  city: {
+    type: String,
+    trim: true
+  },
+  bio: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Bio cannot exceed 500 characters']
+  },
+  skills: [{
+    type: String
+  }],
+  totalEarnings: {
+    type: Number,
+    default: 0
   },
   isActive: {
     type: Boolean,

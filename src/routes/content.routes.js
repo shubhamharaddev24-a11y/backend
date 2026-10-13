@@ -1,69 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const contentController = require('../controllers/content.controller');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
+const { uploadSingle } = require('../services/upload.service');
 
-// Ensure uploads directory exists (wrapped in try/catch for read-only serverless filesystems)
-const uploadDir = process.env.NODE_ENV === 'production' 
-  ? path.join('/tmp', 'uploads') 
-  : path.join(__dirname, '../../uploads');
-
-try {
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-} catch (err) {
-  console.warn('⚠️ Could not create uploads directory (this is normal on serverless platforms):', err.message);
-}
-
-// Multer Storage Setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, 'image-' + uniqueSuffix + ext);
-  },
-});
-
-// File Filter for Images
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed!'), false);
-  }
-};
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit for high-res DSLR & stock photos
-  fileFilter,
-});
-
-// Middleware wrapper for handling Multer errors cleanly
-const uploadSingleImage = (req, res, next) => {
-  upload.single('image')(req, res, (err) => {
-    if (err instanceof multer.MulterError) {
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({
-          success: false,
-          message: 'Image file is too large! Maximum allowed size is 50MB.',
-        });
-      }
+// Middleware wrapper for handling Multer errors cleanly from uploadSingle
+const handleUpload = (req, res, next) => {
+  uploadSingle('image')(req, res, (err) => {
+    if (err) {
       return res.status(400).json({
         success: false,
-        message: err.message,
-      });
-    } else if (err) {
-      return res.status(400).json({
-        success: false,
-        message: err.message || 'Image upload error',
+        message: err.message || 'File upload error',
       });
     }
     next();
@@ -79,6 +26,6 @@ router.use(protect);
 router.use(restrictTo('admin'));
 
 router.put('/sections/:sectionKey', contentController.updateSection);
-router.post('/upload', uploadSingleImage, contentController.uploadImage);
+router.post('/upload', handleUpload, contentController.uploadImage);
 
 module.exports = router;

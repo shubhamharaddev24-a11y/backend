@@ -22,13 +22,14 @@ const validateBooking = (req, res, next) => {
     .run(req);
 
   body('service')
+    .optional()
     .isMongoId()
     .withMessage('Please select a valid service')
     .run(req);
 
   body('eventType')
     .trim()
-    .isIn(['wedding', 'portrait', 'event', 'commercial', 'other'])
+    .isIn(['wedding', 'pre-wedding', 'portrait', 'event', 'commercial', 'cinematography', 'other'])
     .withMessage('Please select a valid event type')
     .run(req);
 
