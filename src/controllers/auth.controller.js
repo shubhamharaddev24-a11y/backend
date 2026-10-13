@@ -13,7 +13,7 @@ const signToken = (id) => {
 
 // Register user
 exports.register = asyncHandler(async (req, res, next) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role, phone, city, skills, bio } = req.body;
 
   // Check if user already exists
   const existingUser = await User.findOne({ email });
@@ -21,11 +21,19 @@ exports.register = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'User with this email already exists'));
   }
 
+  // Prevent direct public admin creation - default to client or freelancer
+  const safeRole = role === 'admin' ? 'client' : (role || 'client');
+
   // Create new user
   const newUser = await User.create({
     name,
     email,
     password,
+    role: safeRole,
+    phone,
+    city,
+    skills: Array.isArray(skills) ? skills : (skills ? [skills] : []),
+    bio
   });
 
   // Generate token

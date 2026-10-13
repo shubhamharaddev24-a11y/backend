@@ -25,22 +25,32 @@ const bookingSchema = new mongoose.Schema({
   service: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Service',
-    required: [true, 'Service is required']
+    required: false
+  },
+  title: {
+    type: String,
+    trim: true,
+    maxlength: [150, 'Title cannot exceed 150 characters']
+  },
+  client: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  claimedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  claimedAt: {
+    type: Date
   },
   eventType: {
     type: String,
-    enum: ['wedding', 'portrait', 'event', 'commercial', 'other'],
+    enum: ['wedding', 'pre-wedding', 'portrait', 'event', 'commercial', 'cinematography', 'other'],
     required: [true, 'Event type is required']
   },
   eventDate: {
     type: Date,
-    required: [true, 'Event date is required'],
-    validate: {
-      validator: function(value) {
-        return value > new Date();
-      },
-      message: 'Event date must be in the future'
-    }
+    required: [true, 'Event date is required']
   },
   eventLocation: {
     type: String,
@@ -50,7 +60,7 @@ const bookingSchema = new mongoose.Schema({
   },
   eventDuration: {
     type: String,
-    required: [true, 'Event duration is required'],
+    default: 'Full Day',
     enum: ['Half Day', 'Full Day', '2 Days', '3 Days', 'Custom']
   },
   guestCount: {
@@ -62,14 +72,35 @@ const bookingSchema = new mongoose.Schema({
     type: Number,
     min: [0, 'Budget must be a positive number']
   },
+  commissionRate: {
+    type: Number,
+    default: 10, // 10% platform commission
+    min: 0,
+    max: 100
+  },
+  platformFee: {
+    type: Number,
+    default: 0
+  },
+  freelancerPayout: {
+    type: Number,
+    default: 0
+  },
+  expiresAt: {
+    type: Date
+  },
+  expiryHours: {
+    type: Number,
+    default: 24 // Default 24 hours expiry
+  },
   message: {
     type: String,
     maxlength: [2000, 'Message cannot exceed 2000 characters']
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'cancelled', 'completed'],
-    default: 'pending'
+    enum: ['open', 'pending', 'claimed', 'confirmed', 'in_progress', 'completed', 'cancelled', 'expired'],
+    default: 'open'
   },
   totalPrice: {
     type: Number,
@@ -111,14 +142,34 @@ const bookingSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better query performance
-bookingSchema.index({ status: 1, eventDate: -1 });
+// Auto-calculate fees and expiration before saving
+bookingSchema.pre('save', function(next) {
+  const price = this.totalPrice || this.budget || 0;
+  if (price > 0) {
+    const rate = this.commissionRate !== undefined ? this.commissionRate : 10;
+    this.platformFee = Math.round((price * rate) / 100);
+    this.freelancerPayout = Math.max(0, price - this.platformFee);
+    if (!this.totalPrice) this.totalPrice = price;
+  }
+
+  if (!this.expiresAt) {
+    const hours = this.expiryHours || 24;
+    this.expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
+  }
+
+  next();
+});
+
+// Indexes for high performance querying
+bookingSchema.index({ status: 1, expiresAt: 1 });
+bookingSchema.index({ claimedBy: 1 });
+bookingSchema.index({ client: 1 });
 bookingSchema.index({ customerEmail: 1 });
 bookingSchema.index({ eventDate: 1 });
 
 // Virtual for balance calculation
 bookingSchema.virtual('remainingBalance').get(function() {
-  return this.totalPrice - this.advancePaid;
+  return (this.totalPrice || 0) - (this.advancePaid || 0);
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
