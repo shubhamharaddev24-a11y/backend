@@ -9,10 +9,13 @@ const router = express.Router();
 router.post('/', optionalAuth, validateBooking, bookingController.createBooking);
 router.get('/public/services', bookingController.getPublicServices);
 
-// Marketplace Gig Routes
+// Marketplace Gig & Quotation Routes
 router.get('/marketplace/available', bookingController.getAvailableOrders);
+router.get('/marketplace/stats', protect, bookingController.getMarketplaceStats);
 router.post('/marketplace/order', optionalAuth, bookingController.createBooking); // Supports guest and authenticated booking
-router.post('/marketplace/:id/claim', protect, restrictTo('freelancer', 'photographer', 'admin'), bookingController.claimOrder);
+router.post('/marketplace/:id/claim', protect, restrictTo('freelancer', 'photographer', 'admin', 'user'), bookingController.claimOrder);
+router.post('/marketplace/:id/quote', protect, restrictTo('freelancer', 'photographer', 'admin', 'user'), bookingController.submitQuotation);
+router.patch('/marketplace/:id/accept-quote/:quoteId', protect, bookingController.acceptQuotation);
 router.get('/marketplace/my-client-orders', protect, bookingController.getMyClientOrders);
 router.get('/marketplace/my-claimed-orders', protect, bookingController.getMyFreelancerOrders);
 router.patch('/marketplace/:id/complete', protect, bookingController.completeOrder);
@@ -27,4 +30,3 @@ router.delete('/:id', protect, restrictTo('admin'), bookingController.deleteBook
 router.get('/stats/summary', protect, restrictTo('admin'), bookingController.getBookingStats);
 
 module.exports = router;
-

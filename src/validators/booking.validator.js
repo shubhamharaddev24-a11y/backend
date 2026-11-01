@@ -31,8 +31,21 @@ const validateBooking = async (req, res, next) => {
 
       body('eventType')
         .trim()
-        .isIn(['wedding', 'pre-wedding', 'portrait', 'event', 'commercial', 'cinematography', 'other'])
-        .withMessage('Please select a valid event type')
+        .isIn([
+          'wedding', 'pre-wedding', 'engagement', 'birthday', 'maternity', 'baby-shoot', 'portrait', 'event',
+          'reel-shoot', 'promotional-video', 'music-video', 'video-editing', 'cinematography', 'commercial',
+          'logo-design', 'wedding-invitation', 'banner-design', 'branding-deck',
+          'web-development', 'digital-marketing', 'seo-optimization', 'social-media-management',
+          'other'
+        ])
+        .withMessage('Please select a valid service or event type')
+        .run(req),
+
+      body('category')
+        .optional()
+        .trim()
+        .isIn(['photography', 'video-reels', 'design-creative', 'digital-services', 'other'])
+        .withMessage('Please select a valid category')
         .run(req),
 
       body('eventDate')
@@ -51,14 +64,15 @@ const validateBooking = async (req, res, next) => {
 
       body('eventLocation')
         .trim()
-        .isLength({ min: 5, max: 200 })
-        .withMessage('Event location must be between 5 and 200 characters')
+        .isLength({ min: 3, max: 200 })
+        .withMessage('Location must be between 3 and 200 characters')
         .run(req),
 
       body('eventDuration')
+        .optional()
         .trim()
         .isIn(['Half Day', 'Full Day', '2 Days', '3 Days', 'Custom'])
-        .withMessage('Please select a valid event duration')
+        .withMessage('Please select a valid duration')
         .run(req),
 
       body('guestCount')
@@ -97,4 +111,3 @@ const validateBooking = async (req, res, next) => {
 };
 
 module.exports = { validateBooking };
-

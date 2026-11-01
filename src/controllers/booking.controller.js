@@ -6,7 +6,21 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const emailService = require('../services/email.service');
 
-// Create booking
+// Helper to determine category from eventType
+const getCategoryForType = (eventType) => {
+  const photoTypes = ['wedding', 'pre-wedding', 'engagement', 'birthday', 'maternity', 'baby-shoot', 'portrait', 'event'];
+  const videoTypes = ['reel-shoot', 'promotional-video', 'music-video', 'video-editing', 'cinematography', 'commercial'];
+  const designTypes = ['logo-design', 'wedding-invitation', 'banner-design', 'branding-deck'];
+  const digitalTypes = ['web-development', 'digital-marketing', 'seo-optimization', 'social-media-management'];
+
+  if (photoTypes.includes(eventType)) return 'photography';
+  if (videoTypes.includes(eventType)) return 'video-reels';
+  if (designTypes.includes(eventType)) return 'design-creative';
+  if (digitalTypes.includes(eventType)) return 'digital-services';
+  return 'photography';
+};
+
+// Create booking / Post Marketplace Order
 exports.createBooking = asyncHandler(async (req, res, next) => {
   const bookingData = { ...req.body };
 
@@ -23,6 +37,11 @@ exports.createBooking = asyncHandler(async (req, res, next) => {
     bookingData.totalPrice = bookingData.budget;
   }
 
+  // Auto-set category based on eventType if not provided
+  if (!bookingData.category && bookingData.eventType) {
+    bookingData.category = getCategoryForType(bookingData.eventType);
+  }
+
   // Set client if authenticated
   if (req.user) {
     bookingData.client = req.user._id;
@@ -33,12 +52,13 @@ exports.createBooking = asyncHandler(async (req, res, next) => {
 
   // Set title fallback
   if (!bookingData.title) {
-    bookingData.title = `${bookingData.eventType ? bookingData.eventType.toUpperCase() : 'Photo'} Shoot in ${bookingData.eventLocation || 'Specified Location'}`;
+    const typeLabel = bookingData.eventType ? bookingData.eventType.replace('-', ' ').toUpperCase() : 'CREATIVE SERVICE';
+    bookingData.title = `${typeLabel} in ${bookingData.eventLocation || 'Thane / Mumbai'}`;
   }
 
-  // Calculate commission fees
+  // Calculate commission fees (10% default platform commission)
   const price = bookingData.totalPrice || bookingData.budget || 0;
-  const rate = bookingData.commissionRate || 10;
+  const rate = bookingData.commissionRate !== undefined ? Number(bookingData.commissionRate) : 10;
   bookingData.platformFee = Math.round((price * rate) / 100);
   bookingData.freelancerPayout = Math.max(0, price - bookingData.platformFee);
 
@@ -67,11 +87,14 @@ exports.createBooking = asyncHandler(async (req, res, next) => {
   );
 });
 
-// Get all bookings
+// Get all bookings (Admin)
 exports.getAllBookings = asyncHandler(async (req, res, next) => {
-  const { page = 1, limit = 10, status, sortBy = 'createdAt' } = req.query;
+  const { page = 1, limit = 50, status, category, sortBy = 'createdAt' } = req.query;
 
-  const filter = status ? { status } : {};
+  const filter = {};
+  if (status) filter.status = status;
+  if (category) filter.category = category;
+
   const skip = (page - 1) * limit;
 
   const bookings = await Booking.find(filter)
@@ -79,6 +102,8 @@ exports.getAllBookings = asyncHandler(async (req, res, next) => {
     .skip(skip)
     .limit(parseInt(limit))
     .populate('service', 'name price category')
+    .populate('client', 'name email phone')
+    .populate('claimedBy', 'name email phone')
     .populate('assignedTo', 'name email');
 
   const total = await Booking.countDocuments(filter);
@@ -100,7 +125,9 @@ exports.getAllBookings = asyncHandler(async (req, res, next) => {
 exports.getBookingById = asyncHandler(async (req, res, next) => {
   const booking = await Booking.findById(req.params.id)
     .populate('service', 'name price category features')
-    .populate('assignedTo', 'name email');
+    .populate('client', 'name email phone')
+    .populate('claimedBy', 'name email phone avatar skills city')
+    .populate('quotations.provider', 'name email phone avatar skills city');
 
   if (!booking) {
     return next(new ApiError(404, 'Booking not found'));
@@ -243,11 +270,15 @@ exports.getAvailableOrders = asyncHandler(async (req, res, next) => {
     { $set: { status: 'expired' } }
   );
 
-  const { eventType, search } = req.query;
+  const { eventType, category, search } = req.query;
   const filter = {
     status: 'open',
     expiresAt: { $gt: now }
   };
+
+  if (category && category !== 'all') {
+    filter.category = category;
+  }
 
   if (eventType && eventType !== 'all') {
     filter.eventType = eventType;
@@ -266,11 +297,12 @@ exports.getAvailableOrders = asyncHandler(async (req, res, next) => {
     .populate('client', 'name email city')
     .populate('service', 'name price category');
 
-  // Map to include calculated seconds remaining
+  // Map to include calculated seconds remaining & quote count
   const ordersWithTimers = orders.map(order => {
     const obj = order.toObject();
     const remainingMs = new Date(order.expiresAt).getTime() - Date.now();
     obj.secondsRemaining = Math.max(0, Math.floor(remainingMs / 1000));
+    obj.quotesCount = (order.quotations || []).length;
     return obj;
   });
 
@@ -279,12 +311,11 @@ exports.getAvailableOrders = asyncHandler(async (req, res, next) => {
   );
 });
 
-// 2. Freelancer / Photographer claims an order
+// 2. Freelancer / Creator directly claims an order
 exports.claimOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const now = new Date();
 
-  // Find order that is still open and unexpired
   const order = await Booking.findOne({
     _id: id,
     status: 'open',
@@ -295,12 +326,10 @@ exports.claimOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, 'This order is either already claimed by another creator, expired, or unavailable.'));
   }
 
-  // Prevent client from claiming their own order
   if (order.client && order.client.toString() === req.user._id.toString()) {
     return next(new ApiError(400, 'You cannot claim an order that you posted.'));
   }
 
-  // Mark as claimed and assign to creator
   order.status = 'claimed';
   order.claimedBy = req.user._id;
   order.assignedTo = req.user._id;
@@ -319,7 +348,130 @@ exports.claimOrder = asyncHandler(async (req, res, next) => {
   );
 });
 
-// 3. Get orders posted by the logged-in client
+// 3. Provider submits a custom quotation
+exports.submitQuotation = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { quotedPrice, deliverables, equipment, estimatedDays, message } = req.body;
+  const now = new Date();
+
+  if (!quotedPrice || Number(quotedPrice) <= 0) {
+    return next(new ApiError(400, 'Please enter a valid quotation price'));
+  }
+
+  const order = await Booking.findOne({
+    _id: id,
+    status: { $in: ['open', 'pending'] },
+    expiresAt: { $gt: now }
+  });
+
+  if (!order) {
+    return next(new ApiError(404, 'This requirement is no longer accepting quotations or has expired.'));
+  }
+
+  if (order.client && order.client.toString() === req.user._id.toString()) {
+    return next(new ApiError(400, 'You cannot submit a quotation on an order you posted.'));
+  }
+
+  const price = Number(quotedPrice);
+  const rate = order.commissionRate !== undefined ? Number(order.commissionRate) : 10;
+  const platformFee = Math.round((price * rate) / 100);
+  const providerEarnings = Math.max(0, price - platformFee);
+
+  const existingQuoteIndex = order.quotations.findIndex(
+    q => q.provider && q.provider.toString() === req.user._id.toString()
+  );
+
+  const quotationData = {
+    provider: req.user._id,
+    providerName: req.user.name,
+    providerEmail: req.user.email,
+    providerPhone: req.user.phone || '',
+    providerAvatar: req.user.avatar || '',
+    providerRating: 5.0,
+    quotedPrice: price,
+    platformFee,
+    providerEarnings,
+    deliverables: Array.isArray(deliverables) ? deliverables : (deliverables ? deliverables.split(',').map(s => s.trim()) : []),
+    equipment: equipment || '',
+    estimatedDays: estimatedDays ? Number(estimatedDays) : 1,
+    message: message || '',
+    status: 'submitted',
+    createdAt: now
+  };
+
+  if (existingQuoteIndex > -1) {
+    order.quotations[existingQuoteIndex] = quotationData;
+  } else {
+    order.quotations.push(quotationData);
+  }
+
+  order.notes.push({
+    content: `Quotation of ₹${price.toLocaleString()} submitted by provider ${req.user.name}.`,
+    addedBy: req.user._id,
+    createdAt: now
+  });
+
+  await order.save();
+
+  res.status(200).json(
+    ApiResponse.success(order, 'Quotation submitted successfully! The client will review your quote.')
+  );
+});
+
+// 4. Client accepts a provider's quotation
+exports.acceptQuotation = asyncHandler(async (req, res, next) => {
+  const { id, quoteId } = req.params;
+  const now = new Date();
+
+  const order = await Booking.findById(id);
+  if (!order) {
+    return next(new ApiError(404, 'Order not found'));
+  }
+
+  const isClient = (order.client && order.client.toString() === req.user._id.toString()) || (order.customerEmail === req.user.email);
+  const isAdmin = req.user.role === 'admin';
+
+  if (!isClient && !isAdmin) {
+    return next(new ApiError(403, 'Only the client who posted this enquiry can accept a quotation.'));
+  }
+
+  const quote = order.quotations.id(quoteId);
+  if (!quote) {
+    return next(new ApiError(404, 'Quotation not found'));
+  }
+
+  order.quotations.forEach(q => {
+    if (q._id.toString() === quoteId.toString()) {
+      q.status = 'accepted';
+    } else if (q.status === 'submitted') {
+      q.status = 'rejected';
+    }
+  });
+
+  order.selectedQuotation = quote._id;
+  order.claimedBy = quote.provider;
+  order.assignedTo = quote.provider;
+  order.claimedAt = now;
+  order.status = 'confirmed';
+  order.totalPrice = quote.quotedPrice;
+  order.platformFee = quote.platformFee;
+  order.freelancerPayout = quote.providerEarnings;
+
+  order.notes.push({
+    content: `Quotation accepted! Provider ${quote.providerName} confirmed for ₹${quote.quotedPrice.toLocaleString()}. Both contact numbers unlocked.`,
+    addedBy: req.user._id,
+    createdAt: now
+  });
+
+  await order.save();
+  await order.populate('claimedBy', 'name email phone avatar skills city');
+
+  res.status(200).json(
+    ApiResponse.success(order, 'Quotation accepted! Booking confirmed and contact details unlocked.')
+  );
+});
+
+// 5. Get orders posted by the logged-in client
 exports.getMyClientOrders = asyncHandler(async (req, res, next) => {
   const orders = await Booking.find({
     $or: [
@@ -329,6 +481,7 @@ exports.getMyClientOrders = asyncHandler(async (req, res, next) => {
   })
     .sort({ createdAt: -1 })
     .populate('claimedBy', 'name email phone avatar skills city')
+    .populate('quotations.provider', 'name email phone avatar skills city')
     .populate('service', 'name price');
 
   res.status(200).json(
@@ -336,27 +489,31 @@ exports.getMyClientOrders = asyncHandler(async (req, res, next) => {
   );
 });
 
-// 4. Get orders claimed by the logged-in freelancer / photographer
+// 6. Get orders claimed / quoted by the logged-in freelancer
 exports.getMyFreelancerOrders = asyncHandler(async (req, res, next) => {
   const orders = await Booking.find({
-    claimedBy: req.user._id
+    $or: [
+      { claimedBy: req.user._id },
+      { 'quotations.provider': req.user._id }
+    ]
   })
-    .sort({ claimedAt: -1 })
+    .sort({ claimedAt: -1, createdAt: -1 })
     .populate('client', 'name email phone avatar')
     .populate('service', 'name price');
 
-  // Calculate earnings stats
-  const totalClaimed = orders.length;
+  const totalClaimed = orders.filter(o => o.claimedBy && o.claimedBy.toString() === req.user._id.toString()).length;
   let totalEarnings = 0;
   let completedCount = 0;
   let activeCount = 0;
 
   orders.forEach(ord => {
-    if (ord.status === 'completed') {
-      totalEarnings += (ord.freelancerPayout || ord.budget || 0);
-      completedCount++;
-    } else if (ord.status === 'claimed' || ord.status === 'confirmed' || ord.status === 'in_progress') {
-      activeCount++;
+    if (ord.claimedBy && ord.claimedBy.toString() === req.user._id.toString()) {
+      if (ord.status === 'completed') {
+        totalEarnings += (ord.freelancerPayout || ord.budget || 0);
+        completedCount++;
+      } else if (ord.status === 'claimed' || ord.status === 'confirmed' || ord.status === 'in_progress') {
+        activeCount++;
+      }
     }
   });
 
@@ -369,11 +526,11 @@ exports.getMyFreelancerOrders = asyncHandler(async (req, res, next) => {
         activeCount,
         totalEarnings
       }
-    }, 'Freelancer claimed orders retrieved successfully')
+    }, 'Freelancer orders retrieved successfully')
   );
 });
 
-// 5. Complete an order (releases payout)
+// 7. Complete an order (releases payout)
 exports.completeOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
@@ -382,7 +539,6 @@ exports.completeOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError(404, 'Order not found'));
   }
 
-  // Verify authorization (only client, assigned freelancer, or admin can complete)
   const isClient = order.client && order.client.toString() === req.user._id.toString();
   const isFreelancer = order.claimedBy && order.claimedBy.toString() === req.user._id.toString();
   const isAdmin = req.user.role === 'admin';
@@ -412,7 +568,7 @@ exports.completeOrder = asyncHandler(async (req, res, next) => {
   );
 });
 
-// 6. Cancel client order
+// 8. Cancel client order
 exports.cancelOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
@@ -439,5 +595,40 @@ exports.cancelOrder = asyncHandler(async (req, res, next) => {
 
   res.status(200).json(
     ApiResponse.success(order, 'Order cancelled successfully')
+  );
+});
+
+// 9. Get Platform Marketplace Financial & Commission Statistics
+exports.getMarketplaceStats = asyncHandler(async (req, res, next) => {
+  const totalOrders = await Booking.countDocuments();
+  const confirmedOrders = await Booking.countDocuments({ status: { $in: ['confirmed', 'claimed', 'in_progress', 'completed'] } });
+  const completedOrders = await Booking.countDocuments({ status: 'completed' });
+  const openOrders = await Booking.countDocuments({ status: 'open', expiresAt: { $gt: new Date() } });
+
+  const financialAgg = await Booking.aggregate([
+    {
+      $group: {
+        _id: null,
+        grossMerchandiseValue: { $sum: '$totalPrice' },
+        totalPlatformCommission: { $sum: '$platformFee' },
+        totalCreatorPayouts: { $sum: '$freelancerPayout' }
+      }
+    }
+  ]);
+
+  const financials = financialAgg[0] || {
+    grossMerchandiseValue: 0,
+    totalPlatformCommission: 0,
+    totalCreatorPayouts: 0
+  };
+
+  res.status(200).json(
+    ApiResponse.success({
+      totalOrders,
+      confirmedOrders,
+      completedOrders,
+      openOrders,
+      financials
+    }, 'Marketplace statistics retrieved successfully')
   );
 });

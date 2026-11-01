@@ -43,10 +43,26 @@ const bookingSchema = new mongoose.Schema({
   claimedAt: {
     type: Date
   },
+  category: {
+    type: String,
+    enum: ['photography', 'video-reels', 'design-creative', 'digital-services', 'other'],
+    default: 'photography'
+  },
   eventType: {
     type: String,
-    enum: ['wedding', 'pre-wedding', 'portrait', 'event', 'commercial', 'cinematography', 'other'],
-    required: [true, 'Event type is required']
+    enum: [
+      // Photography & Events
+      'wedding', 'pre-wedding', 'engagement', 'birthday', 'maternity', 'baby-shoot', 'portrait', 'event',
+      // Video & Reels
+      'reel-shoot', 'promotional-video', 'music-video', 'video-editing', 'cinematography', 'commercial',
+      // Design & Creative
+      'logo-design', 'wedding-invitation', 'banner-design', 'branding-deck',
+      // Digital Services
+      'web-development', 'digital-marketing', 'seo-optimization', 'social-media-management',
+      // Fallback
+      'other'
+    ],
+    required: [true, 'Event or service type is required']
   },
   eventDate: {
     type: Date,
@@ -119,6 +135,65 @@ const bookingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  // Bidding & Quotation System for multi-provider marketplace
+  quotations: [{
+    provider: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    providerName: {
+      type: String,
+      required: true
+    },
+    providerEmail: String,
+    providerPhone: String,
+    providerAvatar: String,
+    providerRating: {
+      type: Number,
+      default: 5.0
+    },
+    quotedPrice: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    platformFee: {
+      type: Number,
+      default: 0
+    },
+    providerEarnings: {
+      type: Number,
+      default: 0
+    },
+    deliverables: [{
+      type: String
+    }],
+    equipment: {
+      type: String,
+      default: ''
+    },
+    estimatedDays: {
+      type: Number,
+      default: 1
+    },
+    message: {
+      type: String,
+      default: ''
+    },
+    status: {
+      type: String,
+      enum: ['submitted', 'accepted', 'rejected'],
+      default: 'submitted'
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  selectedQuotation: {
+    type: mongoose.Schema.Types.ObjectId
+  },
   notes: [{
     content: String,
     addedBy: {
@@ -162,6 +237,8 @@ bookingSchema.pre('save', function(next) {
 
 // Indexes for high performance querying
 bookingSchema.index({ status: 1, expiresAt: 1 });
+bookingSchema.index({ category: 1 });
+bookingSchema.index({ eventType: 1 });
 bookingSchema.index({ claimedBy: 1 });
 bookingSchema.index({ client: 1 });
 bookingSchema.index({ customerEmail: 1 });
