@@ -366,7 +366,7 @@ npm run test:coverage
 
 For technical support:
 - Email: tech@shubhamphotos.com
-- Phone: +91 92714 56749
+- Phone: +91 88303 31309
 - Documentation: https://docs.shubhamphotos.com
 
 ---
