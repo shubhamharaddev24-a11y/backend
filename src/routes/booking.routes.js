@@ -22,6 +22,8 @@ router.patch('/marketplace/:id/complete', protect, bookingController.completeOrd
 router.patch('/marketplace/:id/cancel', protect, bookingController.cancelOrder);
 
 // Protected routes (admin)
+router.patch('/:id/launch', protect, restrictTo('admin'), bookingController.launchOrderToMarketplace);
+router.post('/marketplace/:id/launch', protect, restrictTo('admin'), bookingController.launchOrderToMarketplace);
 router.get('/', protect, restrictTo('admin'), bookingController.getAllBookings);
 router.get('/:id', protect, restrictTo('admin'), bookingController.getBookingById);
 router.patch('/:id/status', protect, restrictTo('admin'), bookingController.updateBookingStatus);

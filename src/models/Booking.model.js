@@ -116,7 +116,22 @@ const bookingSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['open', 'pending', 'claimed', 'confirmed', 'in_progress', 'completed', 'cancelled', 'expired'],
-    default: 'open'
+    default: 'pending'
+  },
+  isLaunched: {
+    type: Boolean,
+    default: false
+  },
+  adminApproved: {
+    type: Boolean,
+    default: false
+  },
+  launchedAt: {
+    type: Date
+  },
+  launchedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   totalPrice: {
     type: Number,

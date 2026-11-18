@@ -62,10 +62,24 @@ exports.createBooking = asyncHandler(async (req, res, next) => {
   bookingData.platformFee = Math.round((price * rate) / 100);
   bookingData.freelancerPayout = Math.max(0, price - bookingData.platformFee);
 
-  // Set expiry timestamp
+  // Set expiry timestamp and review status
   const hours = bookingData.expiryHours ? Number(bookingData.expiryHours) : 24;
-  bookingData.expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
-  bookingData.status = 'open';
+
+  if (req.user && req.user.role === 'admin') {
+    // Orders posted directly by Admin are launched immediately
+    bookingData.status = bookingData.status || 'open';
+    bookingData.isLaunched = true;
+    bookingData.adminApproved = true;
+    bookingData.launchedAt = new Date();
+    bookingData.launchedBy = req.user._id;
+    bookingData.expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
+  } else {
+    // Orders from clients/customers go to Admin Workspace FIRST before launching to creators
+    bookingData.status = 'pending';
+    bookingData.isLaunched = false;
+    bookingData.adminApproved = false;
+    bookingData.expiresAt = null; // Countdown timer starts only when Admin launches
+  }
 
   // Create new booking
   const newBooking = await Booking.create(bookingData);
@@ -266,13 +280,14 @@ exports.getAvailableOrders = asyncHandler(async (req, res, next) => {
 
   // Auto-expire orders that passed their expiration time
   await Booking.updateMany(
-    { status: 'open', expiresAt: { $lte: now } },
+    { status: 'open', isLaunched: true, expiresAt: { $lte: now } },
     { $set: { status: 'expired' } }
   );
 
   const { eventType, category, search } = req.query;
   const filter = {
     status: 'open',
+    isLaunched: { $ne: false },
     expiresAt: { $gt: now }
   };
 
@@ -630,5 +645,56 @@ exports.getMarketplaceStats = asyncHandler(async (req, res, next) => {
       openOrders,
       financials
     }, 'Marketplace statistics retrieved successfully')
+  );
+});
+
+// 10. Launch order to Creator Marketplace (Admin Only)
+exports.launchOrderToMarketplace = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { expiryHours, budget, notes } = req.body;
+
+  const booking = await Booking.findById(id);
+  if (!booking) {
+    return next(new ApiError(404, 'Booking order not found'));
+  }
+
+  // Allow admin to adjust budget or platform commission if desired before launching
+  if (budget) {
+    booking.budget = Number(budget);
+    booking.totalPrice = Number(budget);
+    const rate = booking.commissionRate !== undefined ? Number(booking.commissionRate) : 10;
+    booking.platformFee = Math.round((booking.totalPrice * rate) / 100);
+    booking.freelancerPayout = Math.max(0, booking.totalPrice - booking.platformFee);
+  }
+
+  const hours = expiryHours ? Number(expiryHours) : (booking.expiryHours || 24);
+  booking.expiryHours = hours;
+  booking.expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
+  booking.status = 'open';
+  booking.isLaunched = true;
+  booking.adminApproved = true;
+  booking.launchedAt = new Date();
+  booking.launchedBy = req.user._id;
+
+  if (notes) {
+    booking.notes = booking.notes || [];
+    booking.notes.push({
+      content: notes,
+      addedBy: req.user._id,
+      createdAt: new Date()
+    });
+  }
+
+  await booking.save();
+
+  if (booking.service) {
+    await booking.populate('service', 'name price category');
+  }
+  if (booking.client) {
+    await booking.populate('client', 'name email phone avatar');
+  }
+
+  res.status(200).json(
+    ApiResponse.success(booking, 'Order successfully approved and launched to Creator Dashboard!')
   );
 });

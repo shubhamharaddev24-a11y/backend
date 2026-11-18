@@ -45,77 +45,8 @@ const seedMarketplace = async () => {
       console.log('Sample Freelancer created: creator@creaonnect.com / CreatorPassword123');
     }
 
-    // 3. Clear existing demo open orders if needed, or check
-    const existingOpenCount = await Booking.countDocuments({ status: 'open' });
-    if (existingOpenCount === 0) {
-      const sampleOrders = [
-        {
-          title: 'Sunset Pre-Wedding Photoshoot & Drone Video',
-          customerName: 'Rahul Sharma & Sneha',
-          customerEmail: 'rahul.sneha@gmail.com',
-          customerPhone: '+91 98201 12345',
-          eventType: 'pre-wedding',
-          eventDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // in 14 days
-          eventLocation: 'Lonavala & Pawna Lake, Maharashtra',
-          eventDuration: 'Full Day',
-          guestCount: 2,
-          budget: 18000,
-          commissionRate: 10,
-          platformFee: 1800,
-          freelancerPayout: 16200,
-          message: 'Looking for a creative photographer for a cinematic sunset pre-wedding shoot with drone shots. 2-3 outfit changes required.',
-          status: 'open',
-          expiryHours: 24,
-          expiresAt: new Date(Date.now() + 18 * 60 * 60 * 1000), // 18 hours from now
-          client: client._id
-        },
-        {
-          title: 'Traditional Wedding Ceremony & Candid Photography',
-          customerName: 'Pooja Patel',
-          customerEmail: 'pooja.weddings@gmail.com',
-          customerPhone: '+91 98112 44556',
-          eventType: 'wedding',
-          eventDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // in 30 days
-          eventLocation: 'Kalyan West, Thane',
-          eventDuration: '2 Days',
-          guestCount: 350,
-          budget: 45000,
-          commissionRate: 10,
-          platformFee: 4500,
-          freelancerPayout: 40500,
-          message: 'Need 1 lead candid photographer and 1 traditional videographer for 2-day wedding (Haldi, Sangeet & Reception).',
-          status: 'open',
-          expiryHours: 12,
-          expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000), // 8 hours from now (expiring soon!)
-          client: client._id
-        },
-        {
-          title: 'Fashion Brand Lookbook & Model Portfolio Shoot',
-          customerName: 'Kunal Deshmukh',
-          customerEmail: 'kunal.fashion@gmail.com',
-          customerPhone: '+91 99230 77889',
-          eventType: 'commercial',
-          eventDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // in 7 days
-          eventLocation: 'Bandra Studio, Mumbai',
-          eventDuration: 'Half Day',
-          guestCount: 5,
-          budget: 12000,
-          commissionRate: 10,
-          platformFee: 1200,
-          freelancerPayout: 10800,
-          message: 'Indoor studio shoot with studio lights for our upcoming autumn clothing line. Need 20 retouched high-res photos.',
-          status: 'open',
-          expiryHours: 24,
-          expiresAt: new Date(Date.now() + 22 * 60 * 60 * 1000), // 22 hours from now
-          client: client._id
-        }
-      ];
-
-      await Booking.insertMany(sampleOrders);
-      console.log(`Created ${sampleOrders.length} sample active marketplace orders with countdown timers.`);
-    } else {
-      console.log(`Marketplace already has ${existingOpenCount} active orders.`);
-    }
+    // 3. Keep orders dynamic - do not insert mock orders
+    console.log('Orders database is left clean for real dynamic photoshoot bookings.');
 
     await mongoose.disconnect();
     console.log('Database disconnected.');
